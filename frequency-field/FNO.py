@@ -1,6 +1,7 @@
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader, random_split
@@ -13,12 +14,12 @@ from neuralop.utils import count_model_params
 class FieldDataset(Dataset):
 
     
-    # 初始變數函式
+    # 初始化與預處理資料
     def __init__(self, X: np.ndarray, Y: np.ndarray, normalize: bool = True):
 
         X = np.transpose(X, (0, 3, 1, 2)).astype(np.float32)
         Y = np.transpose(Y, (0, 3, 1, 2)).astype(np.float32)
-
+        
         if normalize:
 
             mean = X.mean(axis=(1, 2, 3), keepdims=True)
@@ -26,20 +27,17 @@ class FieldDataset(Dataset):
             X = (X - mean) / std
             Y = (Y - mean) / std
 
-
         self.X = torch.from_numpy(X)
         self.Y = torch.from_numpy(Y)
 
     
-    # 特徵資料的數量
+    # 取得資料集總數量
     def __len__(self):
-
         return self.X.shape[0]
 
     
-    # 取值函數
+    # 根據索引值取得單筆特徵與標籤
     def __getitem__(self, idx):
-
         return self.X[idx], self.Y[idx]
 
 
@@ -98,7 +96,6 @@ def train(cfg: dict):
     torch.manual_seed(cfg["seed"])
 
     device = torch.device(cfg["device"])
-
     print(f"Device: {device}")
 
     os.makedirs(cfg["save_dir"], exist_ok=True)
@@ -120,11 +117,11 @@ def train(cfg: dict):
     )
 
     
-    # 定義相對 L2 (Relative L2) 損失函數
+    # 定義相對損失函數
     def rel_l2_loss(pred, target):
 
         diff = (pred - target).pow(2).sum(dim=(-1, -2))
-
+        
         denom = target.pow(2).sum(dim=(-1, -2)) + 1e-8
 
         return (diff / denom).sqrt().mean()
@@ -133,15 +130,11 @@ def train(cfg: dict):
 
     best_val = float("inf")
 
-    
-    # 開始遍歷 Epoch 進行模型訓練
     for epoch in range(1, cfg["epochs"] + 1):
 
         model.train()
-
         train_loss = 0.0
 
-        
         for X_batch, Y_batch in train_loader:
             
             X_batch = X_batch.to(device)
@@ -150,10 +143,9 @@ def train(cfg: dict):
             optimizer.zero_grad()
 
             pred = model(X_batch)
-
             loss = rel_l2_loss(pred, Y_batch)
+            
             loss.backward()
-
             optimizer.step()
 
             train_loss += loss.item()
@@ -163,21 +155,16 @@ def train(cfg: dict):
         scheduler.step()
 
         model.eval()
-
         val_loss = 0.0
 
-        
-        # 在不計算梯度的情況下進行推理以節省記憶體
         with torch.no_grad():
 
-            
             for X_batch, Y_batch in val_loader:
                 
                 X_batch = X_batch.to(device)
                 Y_batch = Y_batch.to(device)
 
                 pred = model(X_batch)
-
                 val_loss += rel_l2_loss(pred, Y_batch).item()
 
         val_loss /= len(val_loader)
@@ -185,12 +172,10 @@ def train(cfg: dict):
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
 
-        
         if epoch % 10 == 0 or epoch == 1:
             print(f"Epoch {epoch:>4}/{cfg['epochs']}  "
                   f"train={train_loss:.4f}  val={val_loss:.4f}")
 
-        
         if val_loss < best_val:
             
             best_val = val_loss
@@ -209,16 +194,13 @@ def train(cfg: dict):
 def test(model, test_loader, cfg: dict):
     
     device = torch.device(cfg["device"])
-
+    
     model.eval()
 
     all_preds, all_targets = [], []
 
-    
-    # 關閉梯度計算
     with torch.no_grad():
 
-        
         for X_batch, Y_batch in test_loader:
 
             pred = model(X_batch.to(device)).cpu()
@@ -242,7 +224,7 @@ def test(model, test_loader, cfg: dict):
 
 # 繪製損失折線圖
 def plot_loss(history: dict):
-
+    
     plt.figure(figsize=(8, 4))
 
     plt.plot(history["train_loss"], label="Train")
@@ -250,7 +232,6 @@ def plot_loss(history: dict):
 
     plt.xlabel("Epoch")
     plt.ylabel("Relative L2 Loss")
-
     plt.title("Training curve")
     plt.legend()
     plt.tight_layout()
@@ -285,6 +266,6 @@ def plot_prediction(preds, targets, sample_idx=0, frame_idx=-1):
 
     plt.suptitle("Hz Field Prediction vs Ground Truth", fontsize=13)
     plt.tight_layout()
-    plt.show()
 
     plt.savefig(f"prediction_s{sample_idx}_f{frame_idx}.png", dpi=150)
+    plt.show()
