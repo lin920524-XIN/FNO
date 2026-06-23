@@ -10,12 +10,12 @@ from FDTD import FDTDSimulator, generate_dataset
 import FNO
 
 
-# 設定模擬樣本的總數量與訓練特徵的切分比例 (FRAME 拆分比例)
+# 設定頻率數量與 frame 的切分比例
 NUM_SAMPLES = 200
 RATIO = 0.4
 
 
-# 呼叫資料集生成函式，執行多個頻率的模擬並儲存結果
+# 多個頻率的模擬
 X_all, Y_all, freq_list = generate_dataset(
     n_samples=NUM_SAMPLES,
     freq_min=1.0,
@@ -32,7 +32,7 @@ X_all, Y_all, freq_list = generate_dataset(
 )
 
 
-# 設定 FNO 模型與訓練流程的相關參數字典
+# 設定 FNO 模型參數
 CFG = {
     "path_X": "dataset_X.npy",
     "path_Y": "dataset_Y.npy",
@@ -53,10 +53,12 @@ CFG = {
     "save_dir": "checkpoints"
 }
 
+# FNO 模型的訓練
 model, history, test_loader = FNO.train(CFG)
 
 FNO.plot_loss(history)
 
+# FNO 模型的測試
 preds, targets = FNO.test(model, test_loader, CFG)
 
 FNO.plot_prediction(preds, targets, sample_idx=0, frame_idx=-1)
