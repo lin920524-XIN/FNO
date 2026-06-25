@@ -137,6 +137,10 @@ class FDTDSimulator:
 
         split_idx = int(total_frames * self.split_ratio)
 
+        split_idx = max(split_idx, 1)
+
+        split_idx = min(split_idx, total_frames - 1)
+
         X_sample = np.transpose(data[:split_idx], (1, 2, 0))
         Y_sample = np.transpose(data[split_idx:], (1, 2, 0))
 
